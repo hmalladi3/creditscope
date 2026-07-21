@@ -8,8 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -163,5 +162,118 @@ class CompanyControllerIntegrationTest extends AbstractIntegrationTest {
                         .content("""
                                 {"name":"Dup Co","ticker":"acme","sector":"Technology","country":"US"}"""))
                 .andExpect(status().isConflict());
+    }
+
+    // @spec API-BE-003
+    @Test
+    void searchMatchesNameOrTickerCaseInsensitivePartial() throws Exception {
+        mockMvc.perform(get("/api/companies").param("search", "sola"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].ticker").value("SOLA"));
+    }
+
+    // @spec API-BE-004
+    @Test
+    void sectorFilterAppliesExactMatch() throws Exception {
+        mockMvc.perform(get("/api/companies").param("sector", "Technology").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].sector", everyItem(is("Technology"))));
+    }
+
+    // @spec API-BE-004
+    @Test
+    void gradeFilterMatchesCurrentRatingOnly() throws Exception {
+        mockMvc.perform(get("/api/companies").param("grade", "AA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].currentGrade", everyItem(is("AA"))))
+                .andExpect(jsonPath("$.totalElements").value(3)); // Solara, Vantage Health, Helvetia
+    }
+
+    // @spec API-BE-007
+    @Test
+    void invalidGradeFilterReturns400() throws Exception {
+        mockMvc.perform(get("/api/companies").param("grade", "NOTAGRADE"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // @spec API-BE-005
+    // Ascending currentGrade means best-quality-first (AAA=rank 1 ... D=rank 10), not
+    // alphabetical — alphabetically "A" sorts before "AA", which is the wrong order for
+    // rating quality. No seed company holds AAA, so the best present grade is AA.
+    @Test
+    void sortByCurrentGradeOrdersByRatingQualityNotAlphabetically() throws Exception {
+        mockMvc.perform(get("/api/companies").param("sort", "currentGrade").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].currentGrade").value("AA"));
+    }
+
+    // @spec API-BE-011, AUTH-BE-010
+    @Test
+    void updateWithAdminTokenSucceeds() throws Exception {
+        String id = "11111111-1111-1111-1111-111111111108"; // Prairie Agri Holdings
+        mockMvc.perform(put("/api/companies/" + id)
+                        .header("Authorization", "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Prairie Agri Holdings Renamed","ticker":"PRAG","sector":"Consumer Staples","country":"CA"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Prairie Agri Holdings Renamed"));
+    }
+
+    // @spec API-BE-011
+    @Test
+    void updateWithoutTokenIsRejected() throws Exception {
+        String id = "11111111-1111-1111-1111-111111111108";
+        mockMvc.perform(put("/api/companies/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"x","ticker":"PRAG","sector":"Consumer Staples","country":"CA"}"""))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // @spec API-BE-011, API-BE-013
+    @Test
+    void deleteWithAdminTokenSucceedsAndCascadesRatings() throws Exception {
+        Company toDelete = companyRepository.save(new Company("Delete Me Co", "DELM", "Industrials", "US", null));
+        mockMvc.perform(delete("/api/companies/" + toDelete.getId())
+                        .header("Authorization", "Bearer " + adminToken()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/companies/" + toDelete.getId()))
+                .andExpect(status().isNotFound());
+    }
+
+    // @spec API-BE-013
+    @Test
+    void deleteAlreadyDeletedReturns404NotIdempotent() throws Exception {
+        mockMvc.perform(delete("/api/companies/" + java.util.UUID.randomUUID())
+                        .header("Authorization", "Bearer " + adminToken()))
+                .andExpect(status().isNotFound());
+    }
+
+    // @spec API-BE-014, API-BE-011
+    @Test
+    void addRatingWithAdminTokenSucceeds() throws Exception {
+        String id = "11111111-1111-1111-1111-111111111108";
+        mockMvc.perform(post("/api/companies/" + id + "/ratings")
+                        .header("Authorization", "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"grade":"A","outlook":"STABLE","ratingDate":"2026-06-01","rationale":"Improved margins."}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.grade").value("A"));
+        mockMvc.perform(get("/api/companies/" + id))
+                .andExpect(jsonPath("$.currentGrade").value("A"));
+    }
+
+    // @spec API-BE-015
+    @Test
+    void addRatingToNonexistentCompanyReturns404() throws Exception {
+        mockMvc.perform(post("/api/companies/" + java.util.UUID.randomUUID() + "/ratings")
+                        .header("Authorization", "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"grade":"A","outlook":"STABLE","ratingDate":"2026-06-01"}"""))
+                .andExpect(status().isNotFound());
     }
 }
