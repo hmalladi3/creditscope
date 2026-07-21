@@ -63,7 +63,7 @@ This project was built using a linked-intent development workflow — every feat
 
 Local: Docker Compose, as above — the reliable, always-fresh fallback.
 
-Live (free tier only, by design — see the HLD for the reasoning): frontend on Vercel, backend on Render (accepts a cold-start delay after ~15 min idle; the frontend shows a "waking up the server" message rather than looking broken), Postgres on Neon.
+Live (free tier only, by design — see the HLD for the reasoning): frontend on Vercel, backend on Render (accepts a cold-start delay after ~15 min idle; the frontend shows a "waking up the server" message rather than looking broken), Postgres on Neon. See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the step-by-step runbook — `render.yaml` in the repo root drives the Render deploy.
 
 ## Author
 
