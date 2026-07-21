@@ -30,8 +30,8 @@ Traces to `docs/llds/auth.md`. Spans backend (`AUTH-BE-*`) and frontend (`AUTH-U
 
 ## Frontend: Login Flow & Token Handling
 
-- [ ] **AUTH-UI-001**: The system shall render a `/login` route with a username/password form.
-- [ ] **AUTH-UI-002**: When login succeeds, the system shall store the returned `{token, username, role, expiresAt}` in `localStorage`.
-- [ ] **AUTH-UI-003**: The system shall attach `Authorization: Bearer <token>` to every API request when a token is present in storage, and omit it otherwise.
-- [ ] **AUTH-UI-004**: If any API response returns `401` or `403`, then the system shall clear the stored token and redirect to `/login`, discarding any in-progress unsaved form input on the current page.
-- [ ] **AUTH-UI-005**: The system shall conditionally render admin-only controls (create/edit/delete affordances) based on the stored `role`, treating this as a UX convenience only — not a security boundary (the backend role check per AUTH-BE-010/013 is the actual enforcement point).
+- [x] **AUTH-UI-001**: The system shall render a `/login` route with a username/password form.
+- [x] **AUTH-UI-002**: When login succeeds, the system shall store the returned `{token, username, role, expiresAt}` in `localStorage`.
+- [x] **AUTH-UI-003**: The system shall attach `Authorization: Bearer <token>` to every API request when a token is present in storage, and omit it otherwise.
+- [x] **AUTH-UI-004**: If any API response returns `401` or `403`, then the system shall clear the stored token and redirect to `/login`, discarding any in-progress unsaved form input on the current page. *(Session-clear + redirect wiring implemented via a window event from `apiFetch` to `AuthProvider`; the clear-on-401 half is unit tested, the redirect half verified logically but not via a dedicated browser check of an actual token-expiry scenario.)*
+- [x] **AUTH-UI-005**: The system shall conditionally render admin-only controls (create/edit/delete affordances) based on the stored `role`, treating this as a UX convenience only — not a security boundary (the backend role check per AUTH-BE-010/013 is the actual enforcement point). *(Verified in browser: logged in as admin, saw controls; logged out, controls disappeared.)*
