@@ -2,7 +2,7 @@
 
 A full-stack credit ratings dashboard — Spring Boot (Java) REST API, React + TypeScript frontend, PostgreSQL, JWT auth. Built as a portfolio piece modeled directly on S&P Global Ratings' own product category: a customer-facing website presenting company credit ratings.
 
-**Live demo:** _pending deployment — see [Deployment](#deployment) below._
+**Live demo:** _pending deployment._
 **Run locally in one command:** `docker compose up` (see [Quick Start](#quick-start)).
 
 ## What it does
@@ -51,20 +51,3 @@ cd frontend && npm ci && npm test
 
 Load-tested with `hey` against the Docker Compose stack — see [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) for the full table and an honest discussion of what the numbers do and don't mean (including a counter-intuitive result: the filtered/sorted query using a native Postgres `LATERAL` join was *faster* than the plain list query at this data scale, and why). Reproduce with `./benchmarks/run.sh`.
 
-## Architecture and process
-
-This project was built using a linked-intent development workflow — every feature traces from a high-level design, through low-level component designs, to EARS-format requirements, to tests, to code, kept mutually coherent as the project evolved rather than accumulating drift. If you want to see the actual design reasoning (including alternatives considered and rejected, and edge cases found by deliberate audit passes), it's documented at:
-
-- [`docs/high-level-design.md`](docs/high-level-design.md) — problem, goals, non-goals, key decisions
-- [`docs/llds/`](docs/llds/) — component-level designs (backend API, auth, frontend, deployment)
-- [`docs/specs/`](docs/specs/) — EARS-format requirements, each marked implemented (`[x]`) or open (`[ ]`), traceable to the tests and code that satisfy them via `@spec` annotations
-
-## Deployment
-
-Local: Docker Compose, as above — the reliable, always-fresh fallback.
-
-Live (free tier only, by design — see the HLD for the reasoning): frontend on Vercel, backend on Render (accepts a cold-start delay after ~15 min idle; the frontend shows a "waking up the server" message rather than looking broken), Postgres on Neon. See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the step-by-step runbook — `render.yaml` in the repo root drives the Render deploy.
-
-## Author
-
-Built by [hmalladi3](https://github.com/hmalladi3).

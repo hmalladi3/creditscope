@@ -10,3 +10,4 @@ build/
 .vscode/
 .vitest-localstorage.json*
 .env.local
+/docs/
