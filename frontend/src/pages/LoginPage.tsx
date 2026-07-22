@@ -60,10 +60,6 @@ export function LoginPage() {
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
-      <p className="mt-4 text-xs text-(--color-ink-muted)">
-        Demo credentials: <code>admin</code>/<code>admin123</code> (full access) or{' '}
-        <code>viewer</code>/<code>viewer123</code> (read-only).
-      </p>
     </div>
   )
 }
