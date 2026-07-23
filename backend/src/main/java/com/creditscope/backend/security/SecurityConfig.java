@@ -92,7 +92,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/api/_debug/**").permitAll() // TEMPORARY, see CorsDebugController
                         .requestMatchers(HttpMethod.POST, "/api/companies/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/companies/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/companies/**").hasRole("ADMIN")
