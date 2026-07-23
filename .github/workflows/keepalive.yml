@@ -1,0 +1,27 @@
+# Pings the live Render backend often enough that it never hits Render's ~15min
+# idle timeout, so the public demo link loads instantly instead of cold-starting.
+# The cold-start handling itself (FE-UI-016: the "waking up" banner, retry logic)
+# stays in the app regardless — this just means a visitor is unlikely to ever see
+# it fire, and the app degrades gracefully instead of looking broken on the rare
+# occasion this workflow itself doesn't run in time (GitHub's schedule trigger is
+# best-effort, not guaranteed to the minute).
+name: Keep backend warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 https://creditscope-backend.onrender.com/actuator/health)
+          echo "Backend responded with status $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Backend health check failed with status $status"
+            exit 1
+          fi

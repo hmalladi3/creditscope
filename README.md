@@ -2,7 +2,7 @@
 
 A full-stack credit ratings dashboard — Spring Boot (Java) REST API, React + TypeScript frontend, PostgreSQL, JWT auth. Built as a portfolio piece modeled directly on S&P Global Ratings' own product category: a customer-facing website presenting company credit ratings.
 
-**Live demo:** https://creditscope-seven.vercel.app/ (backend is on Render's free tier — if it's been idle a few minutes, the first request can take up to ~60s to wake up; the UI shows a "waking up the server" message rather than looking broken)
+**Live demo:** https://creditscope-seven.vercel.app/ (a scheduled GitHub Action keeps the free-tier backend warm, so it should load instantly; on the rare chance it's gone idle anyway, the UI shows a "waking up the server" message rather than looking broken — see `.github/workflows/keepalive.yml`)
 **Run locally in one command:** `docker compose up` (see [Quick Start](#quick-start)).
 
 ## What it does
