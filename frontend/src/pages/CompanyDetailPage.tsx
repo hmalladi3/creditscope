@@ -26,6 +26,13 @@ export function CompanyDetailPage() {
   const deleteCompany = useDeleteCompany()
   const addRating = useAddRating(id ?? '')
 
+  // See DashboardPage — Render's cold start fails fast rather than hanging, so the
+  // real "still waking up" signal is "currently retrying after a failure."
+  const retrying = companyQuery.isFetching && companyQuery.failureCount > 0
+  useEffect(() => {
+    if (retrying) banner.onSlowRequest()
+  }, [retrying, banner.onSlowRequest])
+
   const settled = companyQuery.isSuccess || companyQuery.isError
   useEffect(() => {
     if (settled) banner.reset()

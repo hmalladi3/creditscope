@@ -9,13 +9,18 @@ export function useWakingUpBanner() {
   const [longWait, setLongWait] = useState(false)
   const longWaitTimer = useRef<number>(undefined)
 
+  // Idempotent: may be called once per retry attempt during a cold start, but
+  // should only ever start a single 55s countdown to the "long wait" escalation.
   const onSlowRequest = useCallback(() => {
     setWaking(true)
-    longWaitTimer.current = window.setTimeout(() => setLongWait(true), 55_000)
+    if (longWaitTimer.current === undefined) {
+      longWaitTimer.current = window.setTimeout(() => setLongWait(true), 55_000)
+    }
   }, [])
 
   const reset = useCallback(() => {
     window.clearTimeout(longWaitTimer.current)
+    longWaitTimer.current = undefined
     setWaking(false)
     setLongWait(false)
   }, [])

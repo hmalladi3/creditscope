@@ -66,3 +66,16 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, opts: Ap
   }
   return (await response.json()) as T
 }
+
+// @spec FE-UI-016
+// Render's free tier doesn't hang a request while the container cold-starts — its
+// edge proxy fails fast with a 502/503/504 (observed directly against the live
+// deploy) until the origin is reachable. A network-level failure (fetch rejecting
+// outright, e.g. connection refused mid-boot) shows up as a non-ApiError TypeError.
+// Either shape means "still waking up, keep retrying" rather than "genuinely broken."
+export function isRetryableColdStartError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 502 || error.status === 503 || error.status === 504;
+  }
+  return error instanceof TypeError;
+}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from './client'
+import { apiFetch, isRetryableColdStartError } from './client'
 import type {
   CompanyDetailDto,
   CompanySummaryDto,
@@ -46,7 +46,10 @@ export function useCompany(id: string | undefined, onSlowRequest?: () => void) {
     queryKey: ['company', id],
     queryFn: () => apiFetch<CompanyDetailDto>(`/api/companies/${id}`, {}, { onSlowRequest }),
     enabled: !!id,
-    retry: false,
+    // A genuine 404 shouldn't retry (the company doesn't exist, retrying won't
+    // change that) — but a cold-start 502/503/504 should, same as every other
+    // query. Overriding the global retry default only to special-case the 404.
+    retry: (failureCount, error) => isRetryableColdStartError(error) && failureCount < 12,
   })
 }
 

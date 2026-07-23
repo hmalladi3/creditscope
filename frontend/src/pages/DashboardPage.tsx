@@ -24,6 +24,16 @@ export function DashboardPage() {
   const distributionQuery = useRatingDistribution(banner.onSlowRequest)
   const createCompany = useCreateCompany()
 
+  // Render's cold start fails fast (502/503/504) rather than hanging a single
+  // request, so the "still pending after 5s" signal above never fires during a
+  // cold start — the real signal is "currently retrying after a failure." See
+  // isRetryableColdStartError and the QueryClient retry config in main.tsx.
+  const retrying = (companiesQuery.isFetching && companiesQuery.failureCount > 0)
+    || (distributionQuery.isFetching && distributionQuery.failureCount > 0)
+  useEffect(() => {
+    if (retrying) banner.onSlowRequest()
+  }, [retrying, banner.onSlowRequest])
+
   const settled = companiesQuery.isSuccess || companiesQuery.isError
   useEffect(() => {
     if (settled) banner.reset()

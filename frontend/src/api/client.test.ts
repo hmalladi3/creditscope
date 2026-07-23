@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { storeSession } from '../auth/tokenStorage'
-import { ApiError, apiFetch } from './client'
+import { ApiError, apiFetch, isRetryableColdStartError } from './client'
 
 describe('apiFetch', () => {
   beforeEach(() => {
@@ -70,5 +70,26 @@ describe('apiFetch', () => {
     resolveFetch!(new Response('{}', { status: 200 }))
     await promise
     vi.useRealTimers()
+  })
+})
+
+describe('isRetryableColdStartError', () => {
+  // @spec FE-UI-016
+  // Discovered against the real live deploy: Render's free-tier proxy fails a
+  // request fast with 502/503/504 while the container is asleep/starting, rather
+  // than holding the connection open — so these statuses mean "keep retrying,"
+  // not "give up."
+  it.each([502, 503, 504])('treats a %i ApiError as retryable', (status) => {
+    expect(isRetryableColdStartError(new ApiError(status, null))).toBe(true)
+  })
+
+  it('treats a genuine 404/401/409 ApiError as not retryable', () => {
+    expect(isRetryableColdStartError(new ApiError(404, null))).toBe(false)
+    expect(isRetryableColdStartError(new ApiError(401, null))).toBe(false)
+    expect(isRetryableColdStartError(new ApiError(409, null))).toBe(false)
+  })
+
+  it('treats a network-level failure (fetch rejecting outright) as retryable', () => {
+    expect(isRetryableColdStartError(new TypeError('Failed to fetch'))).toBe(true)
   })
 })
