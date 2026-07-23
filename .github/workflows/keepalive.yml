@@ -15,13 +15,21 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 6 # 3 attempts × 100s curl timeout each, plus overhead
     steps:
       - name: Ping backend health endpoint
         run: |
-          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 https://creditscope-backend.onrender.com/actuator/health)
-          echo "Backend responded with status $status"
-          if [ "$status" != "200" ]; then
-            echo "::error::Backend health check failed with status $status"
-            exit 1
-          fi
+          # A single attempt with a short timeout can false-alarm on a genuine
+          # cold start (observed directly: the very first run after a period of
+          # no traffic caught the backend still asleep and curl gave up before
+          # the container finished waking). Retrying with a generous per-attempt
+          # timeout distinguishes "was cold, now warmed up" from "actually down."
+          for attempt in 1 2 3; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 100 https://creditscope-backend.onrender.com/actuator/health || echo "000")
+            echo "Attempt $attempt: status $status"
+            if [ "$status" = "200" ]; then
+              exit 0
+            fi
+          done
+          echo "::error::Backend health check failed after 3 attempts (last status: $status)"
+          exit 1
