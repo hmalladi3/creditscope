@@ -42,8 +42,18 @@ public class SecurityConfig {
     // regardless of what the security rules below say about GET/POST/etc.
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        // Origin matching is an exact string comparison (Spring does not trim), so a
+        // stray leading/trailing space or newline pasted into a dashboard env-var
+        // field — an easy mistake, and one that produces the exact same silent 403
+        // as a genuine misconfiguration — would otherwise fail with no indication
+        // of why. Trimming (and dropping anything that goes blank) is cheap
+        // insurance against that specific, very plausible failure mode.
+        List<String> trimmedOrigins = allowedOrigins.stream()
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedOrigins(trimmedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -82,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/_debug/**").permitAll() // TEMPORARY, see CorsDebugController
                         .requestMatchers(HttpMethod.POST, "/api/companies/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/companies/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/companies/**").hasRole("ADMIN")
