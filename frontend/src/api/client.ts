@@ -79,3 +79,58 @@ export function isRetryableColdStartError(error: unknown): boolean {
   }
   return error instanceof TypeError;
 }
+
+// Exported so the QueryClient in main.tsx (React Query's own retry loop covers
+// every other request) and this module's manual retry loop (for the login call,
+// which happens before React Query is even relevant) share one retry budget.
+export const COLD_START_MAX_RETRIES = 12;
+export const coldStartRetryDelayMs = (attemptIndex: number) => Math.min(1000 * 1.5 ** attemptIndex, 6000);
+
+/**
+ * A cold-start-shaped error that's still failing after the full retry budget is
+ * genuinely ambiguous from the UI's perspective — either "this cold start is
+ * unusually slow" or "this isn't a cold start at all" (most commonly CORS: a
+ * blocked preflight surfaces to fetch() as a bare TypeError, indistinguishable
+ * client-side from a dropped connection). The end-user message stays generic;
+ * this console hint is what turns a long "why won't this load" investigation
+ * into a short one — exactly the gap that made a real CORS misconfiguration
+ * look like an endless cold start when this app was first deployed live.
+ */
+export function logColdStartExhausted(label: string, error: unknown): void {
+  console.error(
+    `[creditscope] "${label}" gave up after ${COLD_START_MAX_RETRIES} retries with a ` +
+      `${error instanceof TypeError ? 'network-level failure (no HTTP response reached the browser)' : 'server error'}. ` +
+      'If the backend is confirmed reachable (e.g. via curl) and this keeps happening, check for a CORS ' +
+      'misconfiguration — CORS_ALLOWED_ORIGINS on the backend must exactly match this site\'s origin.',
+    error,
+  );
+}
+
+/**
+ * @spec FE-UI-016
+ * For callers outside TanStack Query (currently just login) that still need the
+ * same cold-start resilience React Query gives every other request. `onSlowRequest`
+ * fires immediately on entering the retry loop — each individual retry attempt
+ * resolves fast (Render's proxy fails a cold-start request with a quick 503 rather
+ * than hanging it), so a per-attempt "still pending after 5s" timer would never
+ * fire; "we're already retrying" is the real signal here, same as the wiring in
+ * DashboardPage/CompanyDetailPage for their TanStack Query-managed requests.
+ */
+export async function withColdStartRetry<T>(
+  fn: (opts: { onSlowRequest?: () => void }) => Promise<T>,
+  label: string,
+  onSlowRequest?: () => void,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn({ onSlowRequest });
+    } catch (error) {
+      if (!isRetryableColdStartError(error) || attempt >= COLD_START_MAX_RETRIES) {
+        if (isRetryableColdStartError(error)) logColdStartExhausted(label, error);
+        throw error;
+      }
+      onSlowRequest?.();
+      await new Promise((resolve) => setTimeout(resolve, coldStartRetryDelayMs(attempt)));
+    }
+  }
+}

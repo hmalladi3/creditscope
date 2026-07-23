@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
+import { useWakingUpBanner, WakingUpBanner } from '../components/WakingUpBanner'
 
-// @spec AUTH-UI-001
+// @spec AUTH-UI-001, FE-UI-016
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -11,24 +12,27 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const banner = useWakingUpBanner()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
     try {
-      await login(username, password)
+      await login(username, password, banner.onSlowRequest)
       navigate('/')
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? 'Invalid username or password.' : 'Something went wrong.')
     } finally {
       setSubmitting(false)
+      banner.reset()
     }
   }
 
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="mb-4 text-xl font-semibold">Log in</h1>
+      <WakingUpBanner waking={banner.waking} longWait={banner.longWait} />
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label htmlFor="login-username" className="mb-1 block text-xs text-(--color-ink-muted)">Username</label>
