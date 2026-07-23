@@ -2,7 +2,7 @@
 
 A full-stack credit ratings dashboard — Spring Boot (Java) REST API, React + TypeScript frontend, PostgreSQL, JWT auth. Built as a portfolio piece modeled directly on S&P Global Ratings' own product category: a customer-facing website presenting company credit ratings.
 
-**Live demo:** _pending deployment._
+**Live demo:** https://creditscope-seven.vercel.app/ (backend is on Render's free tier — if it's been idle a few minutes, the first request can take up to ~60s to wake up; the UI shows a "waking up the server" message rather than looking broken)
 **Run locally in one command:** `docker compose up` (see [Quick Start](#quick-start)).
 
 ## What it does
@@ -13,7 +13,7 @@ A full-stack credit ratings dashboard — Spring Boot (Java) REST API, React + T
 - JWT-authenticated admin actions: create/edit/delete companies, add new ratings. Reads are public; writes require an `ADMIN` token — the frontend hides admin controls for non-admins, but the backend's role check is the actual enforcement boundary.
 - Rating history is **append-only** by design: no endpoint edits or deletes an individual rating, mirroring how real rating agencies operate (a correction is a new rating, not a rewritten one).
 
-Demo credentials (seeded, documented on purpose — this is a demo, not a real system): `admin` / `admin123` (full access), `viewer` / `viewer123` (read-only).
+**Demo login (live site):** `viewer` / `viewer123` — read-only, safe to share. The live deploy is a public, shared instance, so admin write access isn't published here (anyone with it could edit/delete the shared demo data with no reset mechanism); the admin flow (`admin` / `admin123` locally, same account exists live) is best demonstrated via `docker compose up` or a walkthrough rather than a public credential.
 
 ## Stack
 
