@@ -33,8 +33,9 @@ class CompanyControllerIntegrationTest extends AbstractIntegrationTest {
     void listIsPublicAndDefaultsToPageSize20() throws Exception {
         mockMvc.perform(get("/api/companies"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(18)))
-                .andExpect(jsonPath("$.size").value(20));
+                .andExpect(jsonPath("$.content", hasSize(20)))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(48));
     }
 
     // @spec API-BE-002
@@ -57,7 +58,7 @@ class CompanyControllerIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/companies").param("page", "999").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)))
-                .andExpect(jsonPath("$.totalElements").value(18));
+                .andExpect(jsonPath("$.totalElements").value(48));
     }
 
     // @spec API-BE-006
@@ -167,7 +168,10 @@ class CompanyControllerIntegrationTest extends AbstractIntegrationTest {
     // @spec API-BE-003
     @Test
     void searchMatchesNameOrTickerCaseInsensitivePartial() throws Exception {
-        mockMvc.perform(get("/api/companies").param("search", "sola"))
+        // "solara" not "sola": Solaris Energy Corp (added later) also contains "sola" —
+        // a real substring collision, and a reminder that a broader term should return
+        // multiple matches rather than the test silently assuming it won't.
+        mockMvc.perform(get("/api/companies").param("search", "solara"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].ticker").value("SOLA"));
@@ -187,7 +191,7 @@ class CompanyControllerIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/companies").param("grade", "AA"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[*].currentGrade", everyItem(is("AA"))))
-                .andExpect(jsonPath("$.totalElements").value(3)); // Solara, Vantage Health, Helvetia
+                .andExpect(jsonPath("$.totalElements").value(6)); // Solara, Vantage Health, Helvetia, Meridian Pharma, Redwood Software, Crestview Capital
     }
 
     // @spec API-BE-007
@@ -200,12 +204,12 @@ class CompanyControllerIntegrationTest extends AbstractIntegrationTest {
     // @spec API-BE-005
     // Ascending currentGrade means best-quality-first (AAA=rank 1 ... D=rank 10), not
     // alphabetical — alphabetically "A" sorts before "AA", which is the wrong order for
-    // rating quality. No seed company holds AAA, so the best present grade is AA.
+    // rating quality. Five seed companies hold AAA, so that's the best present grade.
     @Test
     void sortByCurrentGradeOrdersByRatingQualityNotAlphabetically() throws Exception {
         mockMvc.perform(get("/api/companies").param("sort", "currentGrade").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].currentGrade").value("AA"));
+                .andExpect(jsonPath("$.content[0].currentGrade").value("AAA"));
     }
 
     // @spec API-BE-011, AUTH-BE-010

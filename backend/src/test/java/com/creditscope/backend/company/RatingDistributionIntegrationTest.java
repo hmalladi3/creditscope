@@ -23,7 +23,7 @@ class RatingDistributionIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/ratings/distribution"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(10)))
-                .andExpect(jsonPath("$[?(@.grade=='AAA')].count").value(0));
+                .andExpect(jsonPath("$[?(@.grade=='AAA')].count").value(5));
     }
 
     // @spec API-BE-018
