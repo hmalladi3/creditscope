@@ -2,34 +2,37 @@
 # idle timeout, so the public demo link loads instantly instead of cold-starting.
 # The cold-start handling itself (FE-UI-016: the "waking up" banner, retry logic)
 # stays in the app regardless — this just means a visitor is unlikely to ever see
-# it fire, and the app degrades gracefully instead of looking broken on the rare
-# occasion this workflow itself doesn't run in time (GitHub's schedule trigger is
-# best-effort, not guaranteed to the minute).
+# it fire, and the app degrades gracefully whenever this workflow itself is late
+# or paused.
+#
+# Originally this ran the ping directly on a `*/10 * * * *` schedule. In practice,
+# GitHub's schedule trigger turned out to be far less reliable than the cron
+# expression implies — observed gaps of 54-88 minutes between "every 10 minute"
+# runs on this repo, comfortably long enough for Render to go idle anyway. Rather
+# than fight GitHub's scheduler for frequent dispatch, the actual 9-minute cadence
+# now runs *inside* one long-lived job (fully within this workflow's own control
+# once started); the schedule trigger's only job is restarting that loop every
+# few hours as a safety net, which is a much smaller reliability demand.
 name: Keep backend warm
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "0 */5 * * *"
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 6 # 3 attempts × 100s curl timeout each, plus overhead
+    timeout-minutes: 350 # just under GitHub's 360-minute hard cap per job
     steps:
-      - name: Ping backend health endpoint
+      - name: Ping backend every 9 minutes for ~5.7 hours
         run: |
-          # A single attempt with a short timeout can false-alarm on a genuine
-          # cold start (observed directly: the very first run after a period of
-          # no traffic caught the backend still asleep and curl gave up before
-          # the container finished waking). Retrying with a generous per-attempt
-          # timeout distinguishes "was cold, now warmed up" from "actually down."
-          for attempt in 1 2 3; do
+          # 38 × 9min ≈ 342 min of coverage against a 300-min (5h) outer schedule —
+          # a ~42-minute overlap buffer even if the next scheduled run is late.
+          for i in $(seq 1 38); do
             status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 100 https://creditscope-backend.onrender.com/actuator/health || echo "000")
-            echo "Attempt $attempt: status $status"
-            if [ "$status" = "200" ]; then
-              exit 0
+            echo "[$i/38] $(date -u +%FT%TZ) status=$status"
+            if [ "$i" -lt 38 ]; then
+              sleep 540
             fi
           done
-          echo "::error::Backend health check failed after 3 attempts (last status: $status)"
-          exit 1
